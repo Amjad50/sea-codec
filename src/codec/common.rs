@@ -1,4 +1,3 @@
-use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::cursor::Cursor;
@@ -104,28 +103,6 @@ pub fn read_u32_be(reader: &mut Cursor) -> Result<u32, SeaError> {
 pub fn read_u32_le(reader: &mut Cursor) -> Result<u32, SeaError> {
     let data = read_bytes(reader)?;
     Ok(u32::from_le_bytes(data))
-}
-
-pub fn read_max_or_zero(reader: &mut Cursor, at_least_bytes: usize) -> Result<Vec<u8>, SeaError> {
-    let mut buffer = vec![0u8; at_least_bytes];
-    let mut total_bytes_read = 0;
-
-    while total_bytes_read < at_least_bytes {
-        let bytes_read = reader.read(&mut buffer[total_bytes_read..])?;
-
-        // EOF
-        if bytes_read == 0 {
-            break;
-        }
-
-        total_bytes_read += bytes_read;
-    }
-
-    if total_bytes_read == 0 {
-        return Ok(Vec::new());
-    }
-
-    Ok(buffer[..total_bytes_read].to_vec())
 }
 
 #[derive(Debug)]

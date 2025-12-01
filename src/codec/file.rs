@@ -1,10 +1,6 @@
 use alloc::{rc::Rc, string::String, vec::Vec};
 
-use crate::{
-    codec::{chunk::SeaChunk, common::read_max_or_zero},
-    cursor::Cursor,
-    encoder::EncoderSettings,
-};
+use crate::{codec::chunk::SeaChunk, cursor::Cursor, encoder::EncoderSettings};
 
 use super::{
     chunk::SeaChunkType,
@@ -181,7 +177,7 @@ impl SeaFile {
         remaining_frames: Option<usize>,
         output: &mut Vec<i16>,
     ) -> Result<usize, SeaError> {
-        let encoded = read_max_or_zero(reader, self.header.chunk_size as usize)?;
+        let encoded = reader.read_max_or_zero(self.header.chunk_size as usize)?;
         if encoded.is_empty() {
             return Ok(0);
         }
