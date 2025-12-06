@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use super::{chunk::SeaChunk, common::clamp_i16, dqt::SeaDequantTab};
+use super::{chunk::SeaChunk, dqt::SeaDequantTab};
 
 pub struct Decoder {
     channels: usize,
@@ -38,12 +38,12 @@ impl Decoder {
             for channel_residuals in subchunk_residuals.chunks(self.channels) {
                 for (channel_index, residual) in channel_residuals.iter().enumerate() {
                     let scale_factor = scale_factors[channel_index];
-                    let predicted = lms[channel_index].predict();
                     let quantized: usize = *residual as usize;
                     let dequantized = dqts[scale_factor as usize][quantized];
-                    let reconstructed = clamp_i16(predicted + dequantized);
+
+                    let reconstructed = lms[channel_index].predict_update(dequantized);
+
                     output.push(reconstructed);
-                    lms[channel_index].update(reconstructed, dequantized);
                 }
             }
         }
@@ -72,12 +72,12 @@ impl Decoder {
                 for (channel_index, residual) in channel_residuals.iter().enumerate() {
                     let residual_size: usize = vbr_residuals[channel_index] as usize;
                     let scale_factor = scale_factors[channel_index];
-                    let predicted = lms[channel_index].predict();
                     let quantized: usize = *residual as usize;
                     let dequantized = dqts[residual_size - 1][scale_factor as usize][quantized];
-                    let reconstructed = clamp_i16(predicted + dequantized);
+
+                    let reconstructed = lms[channel_index].predict_update(dequantized);
+
                     output.push(reconstructed);
-                    lms[channel_index].update(reconstructed, dequantized);
                 }
             }
         }

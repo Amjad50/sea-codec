@@ -1,5 +1,7 @@
 use alloc::vec::Vec;
 
+use crate::codec::common::clamp_i16;
+
 pub const LMS_LEN: usize = 4;
 
 #[derive(Debug, Clone)]
@@ -50,6 +52,25 @@ impl SeaLMS {
 
         self.history.copy_within(1.., 0);
         self.history[LMS_LEN - 1] = sample as i32;
+    }
+
+    pub fn predict_update(&mut self, residual: i32) -> i16 {
+        let mut prediction: i32 = 0;
+
+        let delta = residual >> (FLOATING_BITS + 1);
+
+        for i in 0..LMS_LEN {
+            prediction += self.weights[i] * self.history[i];
+            self.weights[i] += if self.history[i] < 0 { -delta } else { delta };
+        }
+
+        let prediction = prediction >> (16 - FLOATING_BITS);
+        let reconstructed = clamp_i16(prediction + residual);
+
+        self.history.copy_within(1.., 0);
+        self.history[LMS_LEN - 1] = reconstructed as i32;
+
+        reconstructed
     }
 
     pub fn get_weights_penalty(&self) -> u64 {
