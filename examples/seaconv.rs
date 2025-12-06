@@ -3,10 +3,7 @@ use sea_codec::{
     decoder::SeaDecoder,
     encoder::{EncoderSettings, SeaEncoder},
 };
-use std::{
-    io::{Read, Write},
-    path::Path,
-};
+use std::{io::Write, path::Path};
 use wav::{read_wav, write_wav};
 
 #[path = "../tests/wav.rs"]
@@ -195,16 +192,13 @@ fn main() {
             });
         }
         (Some("sea"), Some("wav")) => {
-            let mut input_file = std::fs::File::open(input).unwrap_or_else(|_| {
+            let input_file = std::fs::File::open(input).unwrap_or_else(|_| {
                 eprintln!("Error: Failed to open input file");
                 std::process::exit(1);
             });
 
-            let mut content = Vec::new();
-            input_file.read_to_end(&mut content).unwrap();
-
-            let mut sea_decoded = Vec::<i16>::with_capacity(64 * 1024 * 1024);
-            let mut sea_decoder = SeaDecoder::from_slice(&content).unwrap();
+            let mut sea_decoded = Vec::<i16>::with_capacity(1024);
+            let mut sea_decoder = SeaDecoder::from_reader(input_file).unwrap();
 
             while sea_decoder
                 .decode_frame(&mut sea_decoded)
