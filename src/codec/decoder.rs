@@ -28,24 +28,26 @@ impl Decoder {
 
         let dqts: &Vec<Vec<i32>> = self.dequant_tab.get_dqt(chunk.residual_size as usize);
 
-        for (scale_factor_index, subchunk_residuals) in chunk
-            .residuals
-            .chunks(self.channels * chunk.scale_factor_frames as usize)
-            .enumerate()
-        {
-            let scale_factors = &chunk.scale_factors[scale_factor_index * self.channels..];
+        let mut base_scale_factors = chunk.scale_factors.iter();
 
-            for channel_residuals in subchunk_residuals.chunks(self.channels) {
-                for (channel_index, residual) in channel_residuals.iter().enumerate() {
-                    let scale_factor = scale_factors[channel_index];
-                    let quantized: usize = *residual as usize;
-                    let dequantized = dqts[scale_factor as usize][quantized];
+        let mut scale_factors = Vec::with_capacity(self.channels);
 
-                    let reconstructed = lms[channel_index].predict_update(dequantized);
-
-                    output.push(reconstructed);
-                }
+        for (i, residual) in chunk.residuals.iter().enumerate() {
+            let scale_factor_index = i % (self.channels * chunk.scale_factor_frames as usize);
+            // get next subchunk data
+            if scale_factor_index == 0 {
+                scale_factors.clear();
+                scale_factors.extend(base_scale_factors.by_ref().take(self.channels))
             }
+            let channel_index = i % self.channels;
+
+            let scale_factor = scale_factors[channel_index] as usize;
+            let quantized = residual as usize;
+            let dequantized = dqts[scale_factor][quantized];
+
+            let reconstructed = lms[channel_index].predict_update(dequantized);
+
+            output.push(reconstructed);
         }
     }
 
@@ -60,26 +62,31 @@ impl Decoder {
             .map(|i| self.dequant_tab.get_dqt(i).clone())
             .collect();
 
-        for (scale_factor_index, subchunk_residuals) in chunk
-            .residuals
-            .chunks(self.channels * chunk.scale_factor_frames as usize)
-            .enumerate()
-        {
-            let scale_factors = &chunk.scale_factors[scale_factor_index * self.channels..];
-            let vbr_residuals = &chunk.vbr_residual_sizes[scale_factor_index * self.channels..];
+        let mut base_scale_factors = chunk.scale_factors.iter();
+        let mut base_vbr_residual_sizes = chunk.vbr_residual_sizes.iter();
 
-            for channel_residuals in subchunk_residuals.chunks(self.channels) {
-                for (channel_index, residual) in channel_residuals.iter().enumerate() {
-                    let residual_size: usize = vbr_residuals[channel_index] as usize;
-                    let scale_factor = scale_factors[channel_index];
-                    let quantized: usize = *residual as usize;
-                    let dequantized = dqts[residual_size - 1][scale_factor as usize][quantized];
+        let mut scale_factors = Vec::with_capacity(self.channels);
+        let mut vbr_residual_sizes = Vec::with_capacity(self.channels);
 
-                    let reconstructed = lms[channel_index].predict_update(dequantized);
-
-                    output.push(reconstructed);
-                }
+        for (i, residual) in chunk.residuals.iter().enumerate() {
+            let scale_factor_index = i % (self.channels * chunk.scale_factor_frames as usize);
+            // get next subchunk data
+            if scale_factor_index == 0 {
+                scale_factors.clear();
+                scale_factors.extend(base_scale_factors.by_ref().take(self.channels));
+                vbr_residual_sizes.clear();
+                vbr_residual_sizes.extend(base_vbr_residual_sizes.by_ref().take(self.channels))
             }
+            let channel_index = i % self.channels;
+
+            let residual_size = vbr_residual_sizes[channel_index] as usize;
+            let scale_factor = scale_factors[channel_index] as usize;
+            let quantized = residual as usize;
+            let dequantized = dqts[residual_size - 1][scale_factor][quantized];
+
+            let reconstructed = lms[channel_index].predict_update(dequantized);
+
+            output.push(reconstructed);
         }
     }
 }

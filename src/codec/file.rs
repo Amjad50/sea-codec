@@ -1,6 +1,10 @@
 use alloc::{rc::Rc, string::String, vec::Vec};
 
-use crate::{codec::chunk::SeaChunk, cursor::Cursor, encoder::EncoderSettings};
+use crate::{
+    codec::chunk::{SeaChunk, SeaChunkSerializer},
+    cursor::Cursor,
+    encoder::EncoderSettings,
+};
 
 use super::{
     chunk::SeaChunkType,
@@ -147,7 +151,7 @@ impl SeaFile {
             ActiveEncoder::Vbr(encoder) => encoder.encode(samples),
         };
 
-        let chunk = SeaChunk::new(
+        let chunk = SeaChunkSerializer::new(
             &self.header,
             &initial_lms,
             encoder_settings,
